@@ -134,4 +134,119 @@ is_deeply ($i->load(),
  [0, 'this.txt']
 ]);
 
+# Let's do that, only with the transmogrifiers *inside* the spec.
+$i = Iterator::Records::Files->walk (
+   't/test_dir',
+   {
+      clean=>1,
+      sorted=>1,
+      no_path_field=>1,
+      transmogrify => [['select', 'level', 'name']],
+   }
+);
+is_deeply ($i->load(),
+[
+ [0, '.dot.txt'],
+ [0, '.dotted'],
+ [0, '00_test.ext'],
+ [0, 'README'],
+ [0, 'a_file.txt'],
+ [0, 'folder'],
+ [1, 'content1.p'],
+ [1, 'content2.q'],
+ [1, 'subfolder'],
+ [2, 'content3.ext'],
+ [0, 'this.txt']
+]);
+
+# Now let's test a few vanilla roledir walks - first let's just check the field list created if a role ruleset is present.
+$i = Iterator::Records::Files->walk (
+   't/test_dir',
+   {
+      clean=>1,
+      sorted=>1,
+      roles=>[ ['ufile', ['match', qr/^(.*)_/, 'prefix' ]],
+      ]
+   }
+);
+is_deeply ($i->fields(), [qw(path level role item name ext dir filetype modestr dev ino mode nlink uid gid rdev size atime mtime ctime blksize blocks value_bag)], 'field list check');
+$i = $i->transmogrify(['select', 'path', 'level', 'name']);
+#diag (Dumper($i->load()));
+
+# Try a transmogrified walk with role identification and value extraction
+$i = Iterator::Records::Files->walk (
+   't/test_dir',
+   {
+      clean=>1,
+      sorted=>1,
+      roles=>[ ['ufile', ['match', qr/^(.*)_/, 'prefix' ]],
+      ],
+      transmogrify => [
+         ['getvalue', 'prefix'],
+         ['select', 'level', 'role', 'prefix', 'name'],
+      ]
+   }
+);
+#diag (Dumper($i->load()));
+is_deeply ($i->load(),
+[
+ [0, '',      undef, '.dot.txt'],
+ [0, '',      undef, '.dotted'],
+ [0, 'ufile', '00',  '00_test.ext'],
+ [0, '',      undef, 'README'],
+ [0, 'ufile', 'a',   'a_file.txt'],
+ [0, '',      undef, 'folder'],
+ [1, '',      undef, 'content1.p'],
+ [1, '',      undef, 'content2.q'],
+ [1, '',      undef, 'subfolder'],
+ [2, '',      undef, 'content3.ext'],
+ [0, '',      undef, 'this.txt']
+]);
+
+# Find everything with an ".ext" extension
+$i = Iterator::Records::Files->walk (
+   't/test_dir',
+   {
+      clean=>1,
+      sorted=>1,
+      roles=>[ ['extfile', ['ext', 'ext' ]],
+      ],
+      transmogrify => [
+         ['where', sub { $_[0] eq 'extfile' }, 'role'],
+         ['select', 'path', 'level', 'name']
+      ]
+   }
+);
+#diag (Dumper($i->load()));
+is_deeply ($i->load(),
+[
+ ['t/test_dir/00_test.ext',                   0, '00_test.ext'],
+ ['t/test_dir/folder/subfolder/content3.ext', 2, 'content3.ext']
+]);
+
+# Find everything with a defined role
+$i = Iterator::Records::Files->walk (
+   't/test_dir',
+   {
+      clean=>1,
+      sorted=>1,
+      roles=>[ ['ufile', ['match', qr/^(.*)_/, 'prefix' ]],
+               ['extfile', ['ext', 'ext' ]]
+             ],
+      transmogrify => [
+         ['where',    sub { $_[0] }, 'role'],
+         ['getvalue', 'prefix'],
+         ['select',   'role', 'level', 'prefix', 'name']
+      ]
+   }
+);
+#diag (Dumper($i->load()));
+is_deeply ($i->load(),
+[
+ ['ufile',   0, '00',  '00_test.ext'],
+ ['ufile',   0, 'a',   'a_file.txt'],
+ ['extfile', 2, undef, 'content3.ext']
+]);
+
+
 done_testing();
