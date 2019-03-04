@@ -17,21 +17,21 @@ SUPPORT AND DOCUMENTATION
 After installing, you can find documentation for this module with the
 perldoc command.
 
-    perldoc DBX::Simple
+    perldoc Iterator::Records::Files
 
 You can also look for information at:
 
     RT, CPAN's request tracker (report bugs here)
-        http://rt.cpan.org/NoAuth/Bugs.html?Dist=DBX-Simple
+        http://rt.cpan.org/NoAuth/Bugs.html?Dist=Iterator-Records-Files
 
     AnnoCPAN, Annotated CPAN documentation
-        http://annocpan.org/dist/DBX-Simple
+        http://annocpan.org/dist/Iterator-Records-Files
 
     CPAN Ratings
-        http://cpanratings.perl.org/d/DBX-Simple
+        http://cpanratings.perl.org/d/Iterator-Records-Files
 
     Search CPAN
-        http://search.cpan.org/dist/DBX-Simple/
+        http://search.cpan.org/dist/Iterator-Records-Files/
 
 
 LICENSE AND COPYRIGHT
