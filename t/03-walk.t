@@ -272,4 +272,45 @@ is_deeply ($i->load(),
 ]);
 
 
+# Finally, the culminating effort: a walk in which the roles of directories determine the rules and parameters for the walk as it continues
+# inside them.
+
+$i = Iterator::Records::Files->walk (
+   't/test_dir',
+   {
+      clean=>1,
+      sorted=>1,
+      roleparms =>
+      {
+         special => {
+            roles=>[ ['pfile', ['ext', 'p']],
+                     ['specialext', ['ext', 'ext']]
+                   ]
+         },
+      },
+      roles=>[ ['special', ['dir']],
+               ['extfile', ['ext', 'ext' ]]
+             ],
+      transmogrify => [
+         ['select',   'role', 'level', 'name']
+      ]
+   }
+);
+#diag (Dumper($i->load()));
+is_deeply ($i->load(),
+[
+ ['',        0, '.dot.txt'],
+ ['',        0, '.dotted'],
+ ['extfile', 0, '00_test.ext'],
+ ['',        0, 'README'],
+ ['',        0, 'a_file.txt'],
+ ['special', 0, 'folder'],
+ ['pfile',   1, 'content1.p'],
+ ['',        1, 'content2.q'],
+ ['',        1, 'subfolder'],
+ ['specialext', 2, 'content3.ext'],
+ ['',        0, 'this.txt']
+]);
+
+
 done_testing();

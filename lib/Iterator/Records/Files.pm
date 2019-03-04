@@ -258,9 +258,11 @@ sub walk {
    my $underlying;
    my $transmogrifiers = $parms->{'transmogrify'};
    $parms->{'transmogrify'} = undef;
-   
+
+   my $check_roles;   
    if (exists $parms->{'roles'}) {
       $underlying = $self->roledir($dir, $parms);
+      $check_roles = $parms->{'roleparms'};
    } else {
       $underlying = $self->readdir_q($dir, $parms);
    }
@@ -282,7 +284,7 @@ sub walk {
    
    my $pruning_parms = scalar(@pparms) ? \@pparms : ['name'];
    
-   my $base_iter = $underlying->transmogrify(['walk', $self->_walker_builder($dir, $level, $show_path, $show_level, $maxlevel, $stopwalk, $parms), $newfields, @$pruning_parms]);
+   my $base_iter = $underlying->transmogrify(['walk', $self->_walker_builder($dir, $level, $show_path, $show_level, $maxlevel, $stopwalk, $check_roles, $parms), $newfields, @$pruning_parms]);
    if ($transmogrifiers) {
       return $base_iter->transmogrify(@$transmogrifiers);
    } else {
@@ -291,13 +293,17 @@ sub walk {
 }
 
 sub _walker_builder {
-   my ($self, $dir, $level, $show_path, $show_level, $maxlevel, $stopwalk, $parms) = @_;
+   my ($self, $dir, $level, $show_path, $show_level, $maxlevel, $stopwalk, $check_roles, $parms) = @_;
    
    # We are returning a codref factory that the walk transmogrifier builder will call, to get the coderef that
    # actually does the transmogrification of individual records.
    sub {
       my ($fields, $newfields, $infields, $offsets) = @_;
       my ($name_offset, $item_offset) = Iterator::Records::_find_offsets ($fields, ('name', 'item'));
+      my $role_offset;
+      if ($check_roles) {
+         ($role_offset) = Iterator::Records::_find_offsets ($fields, ('role'));
+      }
       
       sub {
          my $rec = shift;
@@ -306,18 +312,31 @@ sub _walker_builder {
          my $name = $rec->[$name_offset];
          my $path = catfile ($dir, $name);
          
+         my $parms_to_use = $parms;
+         
          my $iterator = undef;
          if (    $item eq '+'
              and $name !~ /^\.+$/      # Don't walk into parent or self, if the underlying lister isn't clean!
              and (not defined $maxlevel or $level < $maxlevel)
             ) {
+
+            if ($check_roles) {
+               my $roleparms = $check_roles->{$rec->[$role_offset]};
+               if ($roleparms) {
+                  $parms_to_use = { %$parms };
+                  while (my ($k, $v) = each (%$roleparms)) {
+                     $parms_to_use->{$k} = $v;
+                  }
+               }
+            }
+
             if ($stopwalk) {
                my @swparms = map { $rec->[$_] } @$offsets;
                if (not $stopwalk->(@swparms)) {
-                  $iterator = $self->walk ($path, $parms, $level + 1);
+                  $iterator = $self->walk ($path, $parms_to_use, $level + 1);
                }
             } else {
-               $iterator = $self->walk ($path, $parms, $level + 1);
+               $iterator = $self->walk ($path, $parms_to_use, $level + 1);
             }
          }
          
