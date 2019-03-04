@@ -274,10 +274,15 @@ sub walk {
    my $maxlevel = $parms->{'maxlevel'};
    $maxlevel = 0 if $parms->{'nowalk'}; # Simple pruning in role-based walkers.
    
-   my $pruning_parms = $parms->{'in_fields'} || ['name'];
-   #my $coderef = $parms->{''};
+   my $stopwalk = $parms->{'stopwalk'};
+   my @pparms;
+   if ($stopwalk) {
+      ($stopwalk, @pparms) = @$stopwalk;
+   }
    
-   my $base_iter = $underlying->transmogrify(['walk', $self->_walker_builder($dir, $level, $show_path, $show_level, $maxlevel, $parms), $newfields, @$pruning_parms]);
+   my $pruning_parms = scalar(@pparms) ? \@pparms : ['name'];
+   
+   my $base_iter = $underlying->transmogrify(['walk', $self->_walker_builder($dir, $level, $show_path, $show_level, $maxlevel, $stopwalk, $parms), $newfields, @$pruning_parms]);
    if ($transmogrifiers) {
       return $base_iter->transmogrify(@$transmogrifiers);
    } else {
@@ -286,7 +291,7 @@ sub walk {
 }
 
 sub _walker_builder {
-   my ($self, $dir, $level, $show_path, $show_level, $maxlevel, $parms) = @_;
+   my ($self, $dir, $level, $show_path, $show_level, $maxlevel, $stopwalk, $parms) = @_;
    
    # We are returning a codref factory that the walk transmogrifier builder will call, to get the coderef that
    # actually does the transmogrification of individual records.
@@ -306,7 +311,14 @@ sub _walker_builder {
              and $name !~ /^\.+$/      # Don't walk into parent or self, if the underlying lister isn't clean!
              and (not defined $maxlevel or $level < $maxlevel)
             ) {
-            $iterator = $self->walk ($path, $parms, $level + 1);
+            if ($stopwalk) {
+               my @swparms = map { $rec->[$_] } @$offsets;
+               if (not $stopwalk->(@swparms)) {
+                  $iterator = $self->walk ($path, $parms, $level + 1);
+               }
+            } else {
+               $iterator = $self->walk ($path, $parms, $level + 1);
+            }
          }
          
          ([ $show_path ? ($path) : (), $show_level ? ($level) : (), @$rec ],

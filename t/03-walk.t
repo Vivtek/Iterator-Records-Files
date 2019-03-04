@@ -82,6 +82,29 @@ is_deeply ($i->load(),
  ['t/test_dir/this.txt', 0, 'this.txt']
 ]);
 
+# Prune using a coderef tester
+$i = Iterator::Records::Files->walk (
+   't/test_dir',
+   {
+      clean=>1,
+      sorted=>1,
+      stopwalk=> [sub { $_[0] eq 'subfolder' }, 'name'],
+   }
+);
+$i = $i->transmogrify(['select', 'path', 'level', 'name']);
+is_deeply ($i->load(),
+[
+ ['t/test_dir/.dot.txt', 0, '.dot.txt'],
+ ['t/test_dir/.dotted', 0, '.dotted'],
+ ['t/test_dir/00_test.ext', 0, '00_test.ext'],
+ ['t/test_dir/README', 0, 'README'],
+ ['t/test_dir/a_file.txt', 0, 'a_file.txt'],
+ ['t/test_dir/folder', 0, 'folder'],
+ ['t/test_dir/folder/content1.p', 1, 'content1.p'],
+ ['t/test_dir/folder/content2.q', 1, 'content2.q'],
+ ['t/test_dir/folder/subfolder', 1, 'subfolder'],
+ ['t/test_dir/this.txt', 0, 'this.txt']
+]);
 # Check no_level_field - note that maxlevel still works, because the level is being tracked internally, just not returned in the results.
 $i = Iterator::Records::Files->walk (
    't/test_dir',
