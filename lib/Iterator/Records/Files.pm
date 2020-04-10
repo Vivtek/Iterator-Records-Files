@@ -78,7 +78,7 @@ sub check {
 }
 sub check_hash {
    my ($self, $file) = @_;
-   my @check = $self->check($file);
+   my @check = @{$self->check($file)};
    my $ret = {};
    foreach my $f (qw(filetype modestr dev ino mode nlink uid gid rdev size atime mtime ctime blksize blocks)) {
       $ret->{$f} = shift @check;
